@@ -50,9 +50,9 @@ module marbles() {
 
 module cage() {
   difference() {
-    cyl(3*MARBLE_DIAM+2*WALL, 0.9*MARBLE_DIAM);
-    translate([0, 0, -1])
-      cyl(2.3*MARBLE_DIAM, MARBLE_DIAM+2);
+    rotate([0, 90, 0])
+      torus(MARBLE_DIAM, MARBLE_DIAM/2+WALL);
+    cyl(d=2.3*MARBLE_DIAM, h=L);
     rotate([0, 90, 0])
       torus(MARBLE_DIAM, MARBLE_DIAM/2);
   }
@@ -61,20 +61,27 @@ module cage() {
 module cage2() {
   L2 = L + OFS - 35;
   H = 3 * MARBLE_DIAM + 12;
+
+  // base plate
   difference() {
     translate([-L2/2, -H/2, 0])
       cube([L2, H, WALL]);
+    // cut-outs for marbles
     for (h = [-OFS:2*OFS:1.1+OFS])
-      translate([h-MARBLE_DIAM/2-GAP, -1.5*MARBLE_DIAM, -1])
-        cube([MARBLE_DIAM+2*GAP, 3*MARBLE_DIAM, WALL+2]);
-    translate([-L/2, -(AXLE_DIAM/2+2*GAP), -1])
-      cube([L, AXLE_DIAM+4*GAP, WALL+2]);
+      translate([h, 0, 0])
+        rotate([0, 90, 0])
+          torus(MARBLE_DIAM, MARBLE_DIAM/2);
+    // large cut-out around axle
+    translate([-L/2, -2.3*MARBLE_DIAM/2, -1])
+      cube([L, 2.3*MARBLE_DIAM, WALL+2]);
+    // screw holes
     for (h = [-1:1:1.1])
       for (j = [-1:2:1.1])
         translate([2*h*OFS, j*(H/2-1.5*SCREW_DIAM), -1])
           cylinder(d=SCREW_DIAM, h=WALL+2, $fn=FN);
   }
   intersection() {
+    // upper half of cage
     translate([-2*L, -2*L, 0])
       cube([4*L, 4*L, 4*L]);
     for (h = [-1:2:1.1])
