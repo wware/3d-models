@@ -1,4 +1,4 @@
-SCREW_DIAM = 4;  // 6-32 machine screw
+SCREW_DIAM = 5;  // 6-32 machine screw
 MARBLE_DIAM = 16;
 GAP = 0.75;
 WALL = 3;
@@ -13,82 +13,102 @@ module cyl(d, h) {
       cylinder(h=h, d=d, $fn=FN);
 }
 
-module ring(d1, d2, h) {
-  difference() {
-    cyl(d2, h);
-    translate([-1, 0, 0])
-    cyl(d1, h+3);
-  }
-}
-
-module torus(r1, r2) {
-  rotate_extrude(convexity=10, $fn=FN)
-  translate([r1, 0, 0])
-    circle(r=r2, $fn=FN);
-}
-
-module shaft() {
-  cyl(AXLE_DIAM, L);
-  for (h = [-1:2:1.1]) {
-    translate([h*OFS, 0, 0]) {
-      difference() {
-        cyl(1.5*MARBLE_DIAM, MARBLE_DIAM-GAP);
-        rotate([0, 90, 0])
-            torus(MARBLE_DIAM, MARBLE_DIAM/2);
-      }
-    }
-  }
-}
-
 module marbles() {
   for (t = [0:60:359])
     rotate([t, 0, 0])
   for (h = [-OFS:2*OFS:1.1*OFS])
-    translate([h, 1.02*MARBLE_DIAM, 0])
+    translate([h, MARBLE_DIAM+2*GAP, 0])
       sphere(d=MARBLE_DIAM, $fn=FN);
 }
 
+
+module cone(r, L) {
+  d = 2 * r;
+  rotate([0, 90, 0])
+    intersection() {
+      translate([-L-d, -L-d, 0])
+        cube([2*(L+d), 2*(L+d), 2*L]);
+      difference() {
+         cylinder(h=L, r1=L+d/2, r2=d/2, $fn=FN);
+         translate([0, 0, -sqrt(2)*WALL])
+           cylinder(h=L+d/2, r1=L+d/2, r2=0, $fn=FN);
+      }
+    }
+}
+
+module concave(r, L) {
+  translate([-L, 0, 0])
+    cone(r, L);
+  rotate([0, 0, 180])
+    translate([-L, 0, 0])
+      cone(r, L);
+}
+
+module convex(r, L) {
+  cone(r, L);
+  rotate([0, 0, 180])
+    cone(r, L);
+}
+
+module shaft() {
+  a = (1 - 0.5*sqrt(2)) * MARBLE_DIAM + GAP;
+  cyl(AXLE_DIAM, L);
+  for (h = [-1:2:1.1]) {
+    translate([h*OFS, 0, 0])
+      concave(a, MARBLE_DIAM/2);
+  }
+}
+
+module dual_y() {
+  for (i = [0 : 1 : $children-1]) {
+    children(i);
+    mirror([0, 1, 0]) children(i);
+  }
+}
+
 module cage() {
-  difference() {
-    rotate([0, 90, 0])
-      torus(MARBLE_DIAM, MARBLE_DIAM/2+WALL);
-    cyl(d=2.3*MARBLE_DIAM, h=L);
-    rotate([0, 90, 0])
-      torus(MARBLE_DIAM, MARBLE_DIAM/2);
-  }
-}
-
-module cage2() {
-  L2 = L + OFS - 35;
-  H = 3 * MARBLE_DIAM + 12;
-
-  // base plate
-  difference() {
-    translate([-L2/2, -H/2, 0])
-      cube([L2, H, WALL]);
-    // cut-outs for marbles
-    for (h = [-OFS:2*OFS:1.1+OFS])
-      translate([h, 0, 0])
-        rotate([0, 90, 0])
-          torus(MARBLE_DIAM, MARBLE_DIAM/2);
-    // large cut-out around axle
-    translate([-L/2, -2.3*MARBLE_DIAM/2, -1])
-      cube([L, 2.3*MARBLE_DIAM, WALL+2]);
-    // screw holes
-    for (h = [-1:1:1.1])
-      for (j = [-1:2:1.1])
-        translate([2*h*OFS, j*(H/2-1.5*SCREW_DIAM), -1])
-          cylinder(d=SCREW_DIAM, h=WALL+2, $fn=FN);
-  }
+  Z = 200;
+  a = 1.5 * MARBLE_DIAM + 2.5 * GAP;
   intersection() {
-    // upper half of cage
-    translate([-2*L, -2*L, 0])
-      cube([4*L, 4*L, 4*L]);
-    for (h = [-1:2:1.1])
-      translate([h*OFS, 0, 0]) cage();
+    translate([-Z/2, -Z/2, 0])
+    cube([Z, Z, Z]);
+    for (h = [-1:2:1.1]) {
+      translate([h*OFS, 0, 0])
+        convex(a, MARBLE_DIAM/2);
+    }
+  }
+
+  l = 5 * OFS;
+  c = a - 2.4*WALL;
+  r = 0.75*MARBLE_DIAM;
+  dual_y()
+  difference() {
+    union() {
+      translate([-l/2, a - WALL, 0])
+        cube([l, 15, WALL]);
+    }
+    for (j = [-1:2:1.1])
+      translate([j*OFS, 0, 0]) {
+        translate([-0.1, 0, 0])
+          rotate([0, 90, 0])
+            cylinder(h=r, r1=r+c, r2=c, $fn=FN);
+        rotate([0, -90, 0])
+          cylinder(h=r, r1=r+c, r2=c, $fn=FN);
+    }
+    translate([-OFS, 0, 0]) {
+      translate([-0.1, 0, 0])
+        rotate([0, 90, 0])
+          cylinder(h=r, r1=r+c, r2=c, $fn=FN);
+      rotate([0, -90, 0])
+        cylinder(h=r, r1=r+c, r2=c, $fn=FN);
+    }
+    for (i = [-1:1:1.1]) {
+      translate([i*2*OFS, 32, -5])
+        cylinder(d=SCREW_DIAM, h=15, $fn=FN);
+    }
   }
 }
 
-// shaft();
-// %marbles();
-cage2();
+shaft();
+%marbles();
+cage();
