@@ -1,9 +1,9 @@
 SCREW_DIAM = 5;  // 6-32 machine screw
-MARBLE_DIAM = 16;
-GAP = 0.75;
+MARBLE_DIAM = 15.8;
+GAP = 0.5;
 WALL = 3;
-AXLE_DIAM = 5;
-FN = 60;
+AXLE_DIAM = 6;
+FN = 180;
 L = 90;
 OFS = 15;
 
@@ -16,9 +16,8 @@ module cyl(d, h) {
 module marbles() {
   for (t = [0:60:359])
     rotate([t, 0, 0])
-  for (h = [-OFS:2*OFS:1.1*OFS])
-    translate([h, MARBLE_DIAM+2*GAP, 0])
-      sphere(d=MARBLE_DIAM, $fn=FN);
+  translate([0, MARBLE_DIAM+GAP, 0])
+    sphere(d=MARBLE_DIAM, $fn=FN);
 }
 
 
@@ -45,18 +44,22 @@ module concave(r, L) {
 }
 
 module convex(r, L) {
+  r = r + sqrt(2) * WALL;
   cone(r, L);
   rotate([0, 0, 180])
     cone(r, L);
 }
 
-module shaft() {
+module shaft(feet) {
   a = (1 - 0.5*sqrt(2)) * MARBLE_DIAM + GAP;
   cyl(AXLE_DIAM, L);
-  for (h = [-1:2:1.1]) {
-    translate([h*OFS, 0, 0])
-      concave(a, MARBLE_DIAM/2);
-  }
+  concave(a, MARBLE_DIAM/2);
+  H = 6;
+  g = MARBLE_DIAM / 2 + 2 * WALL;
+  if (feet)
+    for (x = [-1:2:1.1])
+      translate([x*(MARBLE_DIAM/2), 0, -H - g])
+        cylinder(d1=1, d2=0.2, h=H+1, $fn=12);
 }
 
 module dual_y() {
@@ -66,49 +69,49 @@ module dual_y() {
   }
 }
 
-module cage() {
+module cage(feet) {
   Z = 200;
-  a = 1.5 * MARBLE_DIAM + 2.5 * GAP;
+  a = (0.5 + 0.5*sqrt(2)) * MARBLE_DIAM + 2*GAP;
   intersection() {
     translate([-Z/2, -Z/2, 0])
-    cube([Z, Z, Z]);
-    for (h = [-1:2:1.1]) {
-      translate([h*OFS, 0, 0])
-        convex(a, MARBLE_DIAM/2);
-    }
+      cube([Z, Z, Z]);
+    convex(a, MARBLE_DIAM/2);
   }
-
-  l = 5 * OFS;
-  c = a - 2.4*WALL;
-  r = 0.75*MARBLE_DIAM;
-  dual_y()
   difference() {
-    union() {
-      translate([-l/2, a - WALL, 0])
-        cube([l, 15, WALL]);
-    }
-    for (j = [-1:2:1.1])
-      translate([j*OFS, 0, 0]) {
-        translate([-0.1, 0, 0])
-          rotate([0, 90, 0])
-            cylinder(h=r, r1=r+c, r2=c, $fn=FN);
-        rotate([0, -90, 0])
-          cylinder(h=r, r1=r+c, r2=c, $fn=FN);
-    }
-    translate([-OFS, 0, 0]) {
-      translate([-0.1, 0, 0])
-        rotate([0, 90, 0])
-          cylinder(h=r, r1=r+c, r2=c, $fn=FN);
+    translate([-0.5*MARBLE_DIAM, -3*MARBLE_DIAM])
+      cube([MARBLE_DIAM, 6*MARBLE_DIAM, WALL]);
+    rotate([0, 90, 0])
+      cylinder(h=MARBLE_DIAM, r1=a+MARBLE_DIAM/2, r2=a, $fn=FN);
+    translate([0.01, 0, 0])
       rotate([0, -90, 0])
-        cylinder(h=r, r1=r+c, r2=c, $fn=FN);
-    }
-    for (i = [-1:1:1.1]) {
-      translate([i*2*OFS, 32, -5])
-        cylinder(d=SCREW_DIAM, h=15, $fn=FN);
-    }
+        cylinder(h=MARBLE_DIAM, r1=a+MARBLE_DIAM/2, r2=a, $fn=FN);
+    for (j = [-1:2:1.1])
+      translate([0, 2.5 * j * MARBLE_DIAM, -5])
+        cylinder(d=SCREW_DIAM, h=WALL+10, $fn=FN);
   }
+  H = 6;
+  if (feet)
+    for (x = [-1:2:1.1])
+      translate([0, x*(MARBLE_DIAM*3), -H])
+        cylinder(d1=1, d2=0.2, h=H+0.1, $fn=12);
 }
 
-shaft();
-%marbles();
-cage();
+module visualize() {
+  shaft(0);
+  %marbles();
+  cage(0);
+}
+
+module print() {
+  for (x=[0:1:1.1])
+    translate([x*1.1*MARBLE_DIAM, 0, 0]) cage(1);
+  a = (0.5 + 0.5*sqrt(2)) * MARBLE_DIAM + 2*GAP;
+  translate([-1.5*MARBLE_DIAM, 0, a-6])
+    rotate([0,0,90])
+      shaft(1);
+}
+
+if (1)
+  print();
+else
+  visualize();
